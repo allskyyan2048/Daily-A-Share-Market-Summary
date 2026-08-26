@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股每日监测报告 · {{DATE_CN}}</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+:root{
+  --red:#dc2626; --green:#16a34a; --accent:#1e40af; --accent2:#1e3a5f;
+  --bg:#f7f8fa; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.65;}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 48px;}
+header{text-align:center;padding:28px 0 10px;}
+header h1{font-size:26px;color:var(--accent2);letter-spacing:1px;}
+header .sub{color:var(--muted);font-size:14px;margin-top:6px;}
+h2.sec{font-size:19px;color:var(--accent2);margin:34px 0 14px;padding-left:12px;border-left:4px solid var(--accent);}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.05);}
+/* TLDR */
+.tldr{background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);color:#fff;border-radius:12px;padding:22px 24px;margin-top:18px;}
+.tldr .verdict{font-size:20px;font-weight:700;margin-bottom:10px;}
+.tldr .kpis{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;}
+.tldr .kpi{background:rgba(255,255,255,.12);border-radius:8px;padding:8px 14px;font-size:13px;}
+.tldr .kpi b{display:block;font-size:17px;margin-top:2px;}
+.tldr .kpi b.up{color:#fca5a5;} .tldr .kpi b.down{color:#86efac;} .tldr .kpi b.flat{color:#e5e7eb;}
+.tldr .coo{background:rgba(255,255,255,.10);border-radius:8px;padding:12px 14px;font-size:13px;margin-top:8px;}
+.tldr .coo b{color:#fde68a;}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:#eef2f7;color:#334155;text-align:left;padding:7px 9px;border-bottom:2px solid var(--line);white-space:nowrap;}
+td{padding:6px 9px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr:hover td{background:#f8fafc;}
+.up{color:var(--red);font-weight:600;} .down{color:var(--green);font-weight:600;} .flat{color:var(--muted);}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;margin-right:4px;white-space:nowrap;}
+.tag-bull{background:#fee2e2;color:#b91c1c;} .tag-neutral{background:#f1f5f9;color:#475569;} .tag-bear{background:#dcfce7;color:#15803d;}
+/* news list */
+.news li{margin-bottom:10px;list-style:none;padding-left:14px;position:relative;}
+.news li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--accent);}
+.news b{color:var(--accent2);}
+.news .hint{color:var(--muted);font-size:12px;}
+/* view switcher */
+.switcher{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:10px;}
+.sw-btn{border:none;background:#fff;color:#475569;padding:4px 16px;cursor:pointer;font-size:13px;}
+.sw-btn.active{background:var(--accent);color:#fff;}
+.chart-box{width:100%;height:380px;}
+.chart-box-sm{width:100%;height:300px;}
+/* misc */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+.note{font-size:12px;color:var(--muted);margin-top:8px;}
+.kv{display:flex;flex-wrap:wrap;gap:8px;}
+.kv .chip{background:#f1f5f9;border-radius:6px;padding:4px 10px;font-size:13px;}
+.ladder{display:flex;flex-wrap:wrap;gap:10px;}
+.ladder .lb{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;font-size:13px;min-width:150px;}
+.ladder .lb b{display:block;color:#c2410c;font-size:14px;}
+footer{margin-top:36px;padding:18px;background:#eef2f7;border-radius:10px;font-size:12px;color:#475569;}
+footer .risk{color:#b91c1c;font-weight:600;}
+</style>
+</head>
+<body>
+<!--
+════════════════════════════════════════════════════════════════
+A股每日监测报告模板 v1 (daily-a-share-market-summary skill)
+
+使用说明(给生成报告的 agent):
+1. 复制本模板到 <workspace>/daily-review/A股每日监测报告_YYYYMMDD.html
+2. 替换所有 {{PLACEHOLDER}} 为真实数据(数据来自 data/market_data.json,
+   data/earnings_data.json, 新闻检索, 大V观点检索)
+3. CSS/框架 JS(toggleVT/chartsMap/resize)保持不动, 只改数据数组
+4. 颜色约定: 红涨(#dc2626) 绿跌(#16a34a), class="up"=涨, class="down"=跌
+5. 图表切换按钮模式: 每个 card 内 <div id="vN_chart"> + <div id="vN_table">,
+   按钮 onclick="toggleVT('vN','chart'|'table',this)"
+6. 写完后必须运行 scripts/validate_report_js.py 校验内联 JS
+7. 页脚必须保留风险提示
+════════════════════════════════════════════════════════════════
+-->
+<div class="wrap">
+
+<header>
+  <h1>A 股 每 日 监 测 报 告</h1>
+  <div class="sub">{{DATE_CN}} · {{WEEKDAY_CN}} · 收盘数据 ｜ 行情 · 新闻 · 财报 · 观点 一站式复盘</div>
+</header>
+
+<!-- ============ TLDR 结论卡(必须有, 一句话定性 + KPI + 条件→操作→止损) ============ -->
+<div class="tldr">
+  <div class="verdict">{{一句话当日定性, 例: 缩量普涨, 金融搭台、周期唱戏 —— 量能不足仍是最大隐忧}}</div>
+  <div class="kpis">
+    <div class="kpi">上证指数<b class="up">{{值}}</b></div>
+    <div class="kpi">创业板指<b class="up">{{值}}</b></div>
+    <div class="kpi">科创50<b class="{{up|down}}">{{值}}</b></div>
+    <div class="kpi">三市成交<b class="flat">{{额}}万亿 · {{放量/缩量}}N亿</b></div>
+    <div class="kpi">涨停 / 跌停<b class="up">{{N}}家 / {{N}}家</b></div>
+    <div class="kpi">涨跌家数<b class="{{up|down}}">{{N}}涨 / {{N}}跌</b></div>
+  </div>
+  <div class="kpis">
+    <div class="kpi">两融余额<b class="flat">{{值}}万亿</b></div>
+    <div class="kpi">{{重要外部变量}}<b class="{{up|down}}">{{值}}</b></div>
+    <div class="kpi">今日披露财报<b class="up">{{N}}家</b></div>
+    <div class="kpi">主力净流入首选<b class="up">{{板块}} +{{N}}亿</b></div>
+  </div>
+  <div class="coo">
+    <b>条件 → 操作 → 止损</b><br>
+    ① <b>条件</b>: {{行情升级条件, 例: 成交回升至X万亿上方且主线扩散}};<br>
+    ② <b>操作</b>: {{不追分时脉冲, 围绕XX/XX两条主线观察承接}};<br>
+    ③ <b>止损/防守</b>: {{指数关键位/跌停家数阈值, 满足即转防守}}。
+  </div>
+</div>
+
+<!-- ============ 1 市场概览 ============ -->
+<h2 class="sec">一、市场概览：{{小标题}}</h2>
+<div class="card">
+  <table>
+    <thead><tr><th>指数</th><th class="num">收盘</th><th class="num">涨跌幅</th><th class="num">成交额(亿)</th><th>备注</th></tr></thead>
+    <tbody>
+      <!-- 10行指数: 上证/深成/创业板/科创50/上证50/沪深300/中证500/中证1000/中证红利/北证50 -->
+      <tr><td>{{指数名}}</td><td class="num">{{收盘}}</td><td class="num {{up|down}}">±X.XX%</td><td class="num">{{额}}</td><td>{{一句备注}}</td></tr>
+    </tbody>
+  </table>
+  <p class="note">{{成交额/量能/市场广度一句话总结}}</p>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="switcher">
+      <button class="sw-btn active" onclick="toggleVT('v1','chart',this)">图</button>
+      <button class="sw-btn" onclick="toggleVT('v1','table',this)">表</button>
+    </div>
+    <div id="v1_chart"><div id="chartIdx" class="chart-box-sm"></div></div>
+    <div id="v1_table" style="display:none">
+      <table><thead><tr><th>指数</th><th class="num">涨跌幅</th></tr></thead><tbody id="tbIdx"></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="switcher">
+      <button class="sw-btn active" onclick="toggleVT('v2','chart',this)">图</button>
+      <button class="sw-btn" onclick="toggleVT('v2','table',this)">表</button>
+    </div>
+    <div id="v2_chart"><div id="chartDist" class="chart-box-sm"></div></div>
+    <div id="v2_table" style="display:none">
+      <table><thead><tr><th>区间</th><th class="num">家数</th></tr></thead><tbody>
+        <!-- 涨>5% / 涨0~5% / 平盘 / 跌0~5% / 跌>5% -->
+      </tbody></table>
+      <p class="note">{{涨跌停/封板率/炸板一句话}}</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 2 板块与资金 ============ -->
+<h2 class="sec">二、板块与资金：{{小标题}}</h2>
+<div class="card">
+  <div class="switcher">
+    <button class="sw-btn active" onclick="toggleVT('v3','chart',this)">图</button>
+    <button class="sw-btn" onclick="toggleVT('v3','table',this)">表</button>
+  </div>
+  <div id="v3_chart"><div id="chartSector" class="chart-box"></div></div>
+  <div id="v3_table" style="display:none">
+    <table>
+      <thead><tr><th>行业(涨幅TOP)</th><th class="num">涨幅</th><th class="num">涨/跌家数</th><th>领涨股</th></tr></thead>
+      <tbody id="tbSectorUp"></tbody>
+    </table>
+    <table style="margin-top:12px">
+      <thead><tr><th>行业(跌幅TOP)</th><th class="num">跌幅</th><th>备注</th></tr></thead>
+      <tbody id="tbSectorDn"></tbody>
+    </table>
+  </div>
+  <p class="note">{{板块主线一句话归因}}</p>
+</div>
+
+<div class="card">
+  <div class="switcher">
+    <button class="sw-btn active" onclick="toggleVT('v4','chart',this)">图</button>
+    <button class="sw-btn" onclick="toggleVT('v4','table',this)">表</button>
+  </div>
+  <div id="v4_chart"><div id="chartFlow" class="chart-box"></div></div>
+  <div id="v4_table" style="display:none">
+    <table>
+      <thead><tr><th>板块</th><th class="num">主力净流入(亿)</th><th class="num">当日涨幅</th></tr></thead>
+      <tbody id="tbFlow"></tbody>
+    </table>
+  </div>
+  <p class="note">{{资金流向一句话: 流入方向→流出方向, 资金在切换什么}}</p>
+</div>
+
+<div class="card">
+  <b style="color:var(--accent2)">概念热点速览</b>
+  <div class="kv" style="margin-top:10px">
+    <span class="chip">{{概念名}} +X.XX%（主力+N亿）</span>
+    <!-- 6~10 个概念 chip -->
+  </div>
+  <p class="note">{{动量概念/昨日涨停溢价一句话}}</p>
+</div>
+
+<!-- ============ 3 涨停与龙虎榜 ============ -->
+<h2 class="sec">三、涨停梯队与龙虎榜：{{小标题}}</h2>
+<div class="card">
+  <b style="color:var(--accent2)">连板梯队（今日）</b>
+  <div class="ladder" style="margin-top:10px">
+    <div class="lb"><b>{{股名}} · N连板</b>{{题材}} · {{定位}}</div>
+    <!-- 高标 3~6 个 -->
+  </div>
+  <p class="note">{{首板方向分布一句话}}</p>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <b style="color:var(--accent2)">涨停池（按封单资金 TOP10）</b>
+    <table style="margin-top:10px">
+      <thead><tr><th>股票</th><th class="num">涨幅</th><th class="num">封单(亿)</th><th class="num">炸板</th><th>板块</th></tr></thead>
+      <tbody><!-- 数据来自 market_data.json limit_up_pool, 按 seal_amount 降序 --></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <b style="color:var(--accent2)">龙虎榜净买入 TOP10</b>
+    <table style="margin-top:10px">
+      <thead><tr><th>股票</th><th class="num">涨跌</th><th class="num">净买入(万)</th><th>上榜原因</th></tr></thead>
+      <tbody><!-- 数据来自 market_data.json dragon_tiger, 按 net_buy_wan 降序 --></tbody>
+    </table>
+    <p class="note">{{题材归因一句话, 可用 ths_hot 的 reason 字段}}</p>
+  </div>
+</div>
+
+<!-- ============ 4 财经新闻 ============ -->
+<h2 class="sec">四、当日重要财经新闻</h2>
+<div class="card">
+  <b style="color:var(--accent2)">宏观与政策</b>
+  <ul class="news" style="margin-top:8px">
+    <!-- <li><b>标题</b>：一两句摘要(含关键数字)。</li> 6~10 条 -->
+  </ul>
+</div>
+<div class="card">
+  <b style="color:var(--accent2)">市场与海外</b>
+  <ul class="news" style="margin-top:8px">
+    <!-- 商品/汇率/美股变量/南向资金等 5~8 条 -->
+  </ul>
+</div>
+<div class="card">
+  <b style="color:var(--accent2)">公司要闻</b>
+  <ul class="news" style="margin-top:8px">
+    <!-- 重要公告/回购/立案/合作等 8~10 条, 与财报区分 -->
+  </ul>
+</div>
+
+<!-- ============ 5 财报聚焦 ============ -->
+<h2 class="sec">五、财报聚焦：{{小标题, 例: 中报披露高峰日, N家公司集中放榜}}</h2>
+<div class="card">
+  <p>{{披露数量+整体脉络一句话: 哪些行业兑现, 哪些承压}}</p>
+  <div class="switcher" style="margin-top:14px">
+    <button class="sw-btn active" onclick="toggleVT('v5','chart',this)">图</button>
+    <button class="sw-btn" onclick="toggleVT('v5','table',this)">表</button>
+  </div>
+  <div id="v5_chart"><div id="chartEarn" class="chart-box"></div></div>
+  <div id="v5_table" style="display:none">
+    <table>
+      <thead><tr><th>公司</th><th class="num">净利润(亿)</th><th class="num">同比</th><th class="num">营收(亿)</th><th class="num">营收同比</th></tr></thead>
+      <tbody id="tbEarn"></tbody>
+    </table>
+    <p class="note">{{口径备注}}</p>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <b style="color:var(--accent2)">高增长榜（营收&gt;10亿，净利同比）</b>
+    <table style="margin-top:10px">
+      <thead><tr><th>公司</th><th class="num">净利(亿)</th><th class="num">同比</th><th>看点</th></tr></thead>
+      <tbody><!-- earnings_data.json growth_top --></tbody>
+    </table>
+    <p class="note">{{补充个案}}</p>
+  </div>
+  <div class="card">
+    <b style="color:var(--accent2)">亏损榜与行业分化</b>
+    <table style="margin-top:10px">
+      <thead><tr><th>公司</th><th class="num">净利润(亿)</th><th>行业逻辑</th></tr></thead>
+      <tbody><!-- earnings_data.json loss_top --></tbody>
+    </table>
+    <p class="note"><b>行业脉络</b>: {{按行业归纳盈亏}}</p>
+  </div>
+</div>
+
+<!-- ============ 6 大V观点 ============ -->
+<h2 class="sec">六、大V与机构观点：{{共识一句话}}</h2>
+<div class="card">
+  <table>
+    <thead><tr><th>观点方</th><th>倾向</th><th>核心观点</th></tr></thead>
+    <tbody>
+      <!-- 8~12 行: <tr><td><b>大V名/机构名</b></td><td><span class="tag tag-bull|tag-neutral|tag-bear">倾向</span></td><td>观点摘要(含关键位/仓位/主线)</td></tr> -->
+    </tbody>
+  </table>
+  <p class="note">观点交集：①{{共识1}}；②{{共识2}}；③{{共识3}}。</p>
+</div>
+
+<!-- ============ 7 明日关注 ============ -->
+<h2 class="sec">七、明日关注清单</h2>
+<div class="card">
+  <ul class="news">
+    <!-- <li><b>量能信号(最关键)</b>: ...</li> 等要点: 量能/主线成色/外盘/财报日历/技术位/退潮信号识别, 5~8 条 -->
+  </ul>
+</div>
+
+<footer>
+  <p class="risk">风险提示：以上分析基于公开数据与市场信息整理，不构成任何投资建议。市场有风险，投资需谨慎。</p>
+  <p style="margin-top:6px">数据口径说明：行情与资金数据为{{DATE_CN}}收盘快照；两融余额为前一交易日数据；财报统计为今日披露的定期报告口径。板块/涨跌停等微观结构数据存在不同统计口径的细微差异，已尽量交叉校验。</p>
+  <p style="margin-top:6px">A股每日监测报告 · {{DATE_CN}} · 自动生成</p>
+</footer>
+
+</div>
+
+<script>
+/* ═══ 框架 JS: toggleVT/chartsMap/resize 保持不动, 只改下面各图数据 ═══ */
+function toggleVT(sec, mode, btn){
+  var btns = btn.parentNode.querySelectorAll('.sw-btn');
+  for(var i=0;i<btns.length;i++){ btns[i].classList.remove('active'); }
+  btn.classList.add('active');
+  var cEl = document.getElementById(sec+'_chart');
+  var tEl = document.getElementById(sec+'_table');
+  if(mode==='chart'){
+    cEl.style.display='block'; tEl.style.display='none';
+    var boxes = cEl.querySelectorAll('.chart-box, .chart-box-sm');
+    for(var j=0;j<boxes.length;j++){
+      var cid = boxes[j].id;
+      if(window.chartsMap && window.chartsMap[cid]){ window.chartsMap[cid].resize(); }
+    }
+  }else{
+    cEl.style.display='none'; tEl.style.display='block';
+  }
+}
+window.chartsMap = {};
+
+/* ── 图1 指数涨跌幅(横向条形图, 涨红) ── */
+(function(){
+  var names=[/*指数名*/];
+  var vals=[/*涨跌幅*/];
+  var c=echarts.init(document.getElementById('chartIdx'));
+  c.setOption({
+    title:{text:'核心指数涨跌幅（%）',left:'center',textStyle:{fontSize:14,color:'#1e3a5f'}},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+    grid:{left:'30%',right:'8%',top:'14%',bottom:'8%'},
+    xAxis:{type:'value',axisLabel:{formatter:'{value}%'}},
+    yAxis:{type:'category',data:names.slice().reverse(),axisLabel:{fontSize:12}},
+    series:[{type:'bar',barWidth:14,
+      data:vals.slice().reverse().map(function(v){return {value:v,itemStyle:{color:v>=0?'#dc2626':'#16a34a'}};}),
+      label:{show:true,position:'right',color:'#475569',fontSize:11}
+    }]
+  });
+  window.chartsMap['chartIdx']=c;
+})();
+
+/* ── 图2 涨跌分布(5档柱状图, 红/绿系) ── */
+(function(){
+  var cats=['跌>5%','跌0~5%','平盘','涨0~5%','涨>5%'];
+  var vals=[/*家数*/];
+  var colors=['#15803d','#16a34a','#94a3b8','#dc2626','#b91c1c'];
+  var c=echarts.init(document.getElementById('chartDist'));
+  c.setOption({
+    title:{text:'全市场涨跌分布（家）',left:'center',textStyle:{fontSize:14,color:'#1e3a5f'}},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+    grid:{left:'14%',right:'8%',top:'16%',bottom:'10%'},
+    xAxis:{type:'category',data:cats},
+    yAxis:{type:'value'},
+    series:[{type:'bar',barWidth:36,
+      data:vals.map(function(v,i){return {value:v,itemStyle:{color:colors[i]}};}),
+      label:{show:true,position:'top',color:'#334155'}
+    }]
+  });
+  window.chartsMap['chartDist']=c;
+})();
+
+/* ── 图3 行业板块涨跌 TOP(涨红跌绿, 排序后横向条形) ── */
+(function(){
+  var rows=[/* ['板块名',涨跌幅] 涨TOP12+跌TOP8 */];
+  var sorted=rows.slice().sort(function(a,b){return a[1]-b[1];});
+  var sNames=[],sData=[];
+  for(var k=0;k<sorted.length;k++){
+    sNames.push(sorted[k][0]);
+    sData.push({value:sorted[k][1],itemStyle:{color:sorted[k][1]>=0?'#dc2626':'#16a34a'}});
+  }
+  var c=echarts.init(document.getElementById('chartSector'));
+  c.setOption({
+    title:{text:'行业板块涨跌幅 TOP（%）',left:'center',textStyle:{fontSize:14,color:'#1e3a5f'}},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps[0];return p.name+'：'+p.value+'%';}},
+    grid:{left:'24%',right:'10%',top:'10%',bottom:'8%'},
+    xAxis:{type:'value',axisLabel:{formatter:'{value}%'}},
+    yAxis:{type:'category',data:sNames,axisLabel:{fontSize:12}},
+    series:[{type:'bar',barWidth:13,data:sData,
+      label:{show:true,position:'right',fontSize:10,color:'#475569'}
+    }]
+  });
+  window.chartsMap['chartSector']=c;
+})();
+
+/* ── 图4 主力资金净流入/流出 TOP ── */
+(function(){
+  var rows=[/* ['板块名',净额亿] 流入TOP8+流出TOP8 */];
+  var sorted=rows.slice().sort(function(a,b){return a[1]-b[1];});
+  var sNames=[],sData=[];
+  for(var k=0;k<sorted.length;k++){
+    sNames.push(sorted[k][0]);
+    sData.push({value:sorted[k][1],itemStyle:{color:sorted[k][1]>=0?'#dc2626':'#16a34a'}});
+  }
+  var c=echarts.init(document.getElementById('chartFlow'));
+  c.setOption({
+    title:{text:'行业主力资金净流入 / 净流出 TOP（亿元）',left:'center',textStyle:{fontSize:14,color:'#1e3a5f'}},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var p=ps[0];return p.name+'：'+p.value+'亿';}},
+    grid:{left:'24%',right:'10%',top:'10%',bottom:'8%'},
+    xAxis:{type:'value'},
+    yAxis:{type:'category',data:sNames,axisLabel:{fontSize:12}},
+    series:[{type:'bar',barWidth:13,data:sData,
+      label:{show:true,position:'right',fontSize:10,color:'#475569'}
+    }]
+  });
+  window.chartsMap['chartFlow']=c;
+})();
+
+/* ── 图5 财报净利润 TOP15 + 填表格 ── */
+(function(){
+  var eLabels=[/*公司名*/];
+  var eProfit=[/*净利润亿*/];
+  var eYoy=[/*净利同比%*/];
+  var rev=[/*营收亿*/];
+  var revYoy=[/*营收同比%*/];
+  var c=echarts.init(document.getElementById('chartEarn'));
+  c.setOption({
+    title:{text:'今日披露财报 · 净利润 TOP15（亿元）',left:'center',textStyle:{fontSize:14,color:'#1e3a5f'}},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){
+      var i=ps[0].dataIndex;
+      return eLabels[i]+'<br/>净利润：'+eProfit[i]+'亿（同比'+eYoy[i]+'%）<br/>营收：'+rev[i]+'亿（同比'+revYoy[i]+'%）';
+    }},
+    grid:{left:'22%',right:'10%',top:'12%',bottom:'8%'},
+    xAxis:{type:'value'},
+    yAxis:{type:'category',data:eLabels.slice().reverse(),axisLabel:{fontSize:12}},
+    series:[{type:'bar',barWidth:13,
+      data:eProfit.slice().reverse().map(function(v){return {value:v,itemStyle:{color:'#b91c1c'}};}),
+      label:{show:true,position:'right',fontSize:10,color:'#475569'}
+    }]
+  });
+  window.chartsMap['chartEarn']=c;
+  var tb=document.getElementById('tbEarn');
+  for(var i=0;i<eLabels.length;i++){
+    var tr=document.createElement('tr');
+    var cls=eYoy[i]>=0?'up':'down';
+    var sign=eYoy[i]>=0?'+':'';
+    tr.innerHTML='<td>'+eLabels[i]+'</td><td class="num">'+eProfit[i]+'</td><td class="num '+cls+'">'+sign+eYoy[i]+'%</td><td class="num">'+rev[i]+'</td><td class="num">'+sign+revYoy[i]+'%</td>';
+    tb.appendChild(tr);
+  }
+})();
+
+/* ── 指数表填充 ── */
+(function(){
+  var rows=[/* ['指数名','+X.XX%'] */];
+  var tb=document.getElementById('tbIdx');
+  for(var i=0;i<rows.length;i++){
+    var tr=document.createElement('tr');
+    var cls=parseFloat(rows[i][1])>=0?'up':'down';
+    tr.innerHTML='<td>'+rows[i][0]+'</td><td class="num '+cls+'">'+rows[i][1]+'</td>';
+    tb.appendChild(tr);
+  }
+})();
+
+/* ── 行业表填充 ── */
+(function(){
+  var up=[/* ['行业','+X.XX%','涨/跌','领涨股'] */];
+  var dn=[/* ['行业','-X.XX%','备注'] */];
+  var tbU=document.getElementById('tbSectorUp');
+  for(var i=0;i<up.length;i++){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+up[i][0]+'</td><td class="num up">'+up[i][1]+'</td><td class="num">'+up[i][2]+'</td><td>'+up[i][3]+'</td>';
+    tbU.appendChild(tr);
+  }
+  var tbD=document.getElementById('tbSectorDn');
+  for(var j=0;j<dn.length;j++){
+    var tr2=document.createElement('tr');
+    tr2.innerHTML='<td>'+dn[j][0]+'</td><td class="num down">'+dn[j][1]+'</td><td>'+dn[j][2]+'</td>';
+    tbD.appendChild(tr2);
+  }
+})();
+
+/* ── 资金表填充 ── */
+(function(){
+  var rows=[/* ['板块','+N.NN','+X.XX%'] */];
+  var tb=document.getElementById('tbFlow');
+  for(var i=0;i<rows.length;i++){
+    var tr=document.createElement('tr');
+    var cls=parseFloat(rows[i][1])>=0?'up':'down';
+    var pctCls=parseFloat(rows[i][2])>=0?'up':'down';
+    tr.innerHTML='<td>'+rows[i][0]+'</td><td class="num '+cls+'">'+rows[i][1]+'</td><td class="num '+pctCls+'">'+rows[i][2]+'</td>';
+    tb.appendChild(tr);
+  }
+})();
+
+window.addEventListener('resize', function(){
+  for(var k in window.chartsMap){ window.chartsMap[k].resize(); }
+});
+</script>
+</body>
+</html>
