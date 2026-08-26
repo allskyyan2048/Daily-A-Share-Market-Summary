@@ -1,12 +1,8 @@
 # Daily-A-Share-Market-Summary
-A one-stop daily review of China's A-share market, covering price action, sector flows, earnings, news, and expert views
+**《中国 A 股每日监测报告》介绍**
 
-Market Overview: All major indices closed higher on shrinking turnover — the Shanghai Composite rose 0.59% to 3,912.52, the STAR 50 jumped 1.71%, while large caps outperformed small caps. Total three-market turnover fell to RMB 1.82 trillion, down RMB 22.4 billion for a second straight day below 2 trillion, a key concern.
+《中国 A 股每日监测报告》是一份自动生成的 A 股市场每日复盘文档，面向关注 A 股的投资者，帮助在收盘后快速、系统性地掌握当日市场全貌。
 
-Sectors & Flows: Brokers and industrial metals formed a dual leadership track — brokerage stocks rallied 3.01% and copper hit a record high on LME at $14,324.5/t. Main capital favored industrial metals (+RMB 7.1bn), non-bank financials (+5.8bn) and securities (+4.9bn), while AI hardware and telecom equipment saw profit-taking.
+报告为 HTML 网页形式，涵盖七大板块：一是市场概览，汇总核心指数表现与成交情况；二是板块与资金，梳理行业涨跌与主力资金流向；三是涨停梯队与龙虎榜，呈现市场人气与题材热点；四是当日重要财经新闻，分宏观政策、市场海外、公司要闻三类；五是财报聚焦，跟踪中报披露动态与业绩分化；六是大 V 与机构观点，汇总多方研判；七是明日关注清单，给出量能、主线、技术位等跟踪要点。
 
-Limit-ups & Dragon-Tiger List: 56 stocks hit daily limits against 2 limit-downs. High-flyers clustered in finance and nonferrous metals, led by Shenzhou's 5 consecutive limit-ups and Chutian Dragon's 4.
-
-News & Earnings: The PBOC injected RMB 239.5bn, digital RMB operators expanded to 30 institutions, and 1,698 companies released interim reports — brokers and nonferrous resources shone, while liquor and photovoltaics slumped.
-
-Views & Outlook: Analysts broadly agree on the repair trend but diverge on sustainability. Key watchpoints for tomorrow: whether turnover returns above RMB 1.9 trillion, broker strength, copper's follow-through, and Nvidia's earnings.
+报告结构清晰、图表交互，适合作为每日盘后速览，快速了解市场动向与风险信号。
