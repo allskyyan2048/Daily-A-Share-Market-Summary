@@ -14,15 +14,16 @@ description: A股每日监测报告一键生成器。收盘后运行采集脚本
 ### Step 0 前置判断
 
 - 确认当前时间已收盘（A股 15:00 收盘，建议 17:00 后跑，数据更稳）。盘前/盘中请求则提醒用户改为收盘后运行。
-- 在用户工作区约定目录：数据 `data/`，报告 `daily-review/A股每日监测报告_YYYYMMDD.html`。若用户未指定 workspace，沿用 `C:\Users\Admin\WorkBuddy\A股每日监测\`。
+- 在用户工作区约定目录：数据 `data/`，报告 `daily-report/A股每日监测报告_YYYYMMDD.html`（或您自定义的路径）。脚本通过 `--out` 参数控制数据输出目录，报告路径由用户自行决定（建议放在 `daily-report/` 子目录）。
 
 ### Step 1 数据采集（运行脚本，不要重写）
 
 ```powershell
-$SKILL = "C:/Users/Admin/.workbuddy/skills/daily-a-share-market-summary"
+# 假设 skill 目录位于 ./skills/daily-a-share-market-summary（相对路径示例）
+$SKILL = "./skills/daily-a-share-market-summary"
 # 交易日当天（默认今天，--date 可指定）
-python "$SKILL/scripts/collect_market.py"   --date 2026-08-26 --out <workspace>/data
-python "$SKILL/scripts/collect_earnings.py" --date 2026-08-26 --out <workspace>/data
+python "$SKILL/scripts/collect_market.py"   --date 2026-08-26 --out ./data
+python "$SKILL/scripts/collect_earnings.py" --date 2026-08-26 --out ./data
 ```
 
 - 脚本自带请求间隔、重试、多镜像切换与日志双写（`market_log.txt` / `earnings_log.txt`），跑完 Read 日志确认各数据块非空（尤其 `industry_all` 概念板块易因 502 失败）。
@@ -40,7 +41,7 @@ python "$SKILL/scripts/collect_earnings.py" --date 2026-08-26 --out <workspace>/
 
 ### Step 3 生成报告（基于模板）
 
-复制 `assets/report_template.html` 到 `daily-review/A股每日监测报告_YYYYMMDD.html`，按模板内注释替换所有 `{{PLACEHOLDER}}`：
+复制 `assets/report_template.html`（或英文/法文模板）到 `daily-report/A股每日监测报告_YYYYMMDD.html`，按模板内注释替换所有 `{{PLACEHOLDER}}`：
 
 **结构（固定 7 章 + TLDR）**：TLDR 结论卡 → 一、市场概览 → 二、板块与资金 → 三、涨停梯队与龙虎榜 → 四、当日重要财经新闻 → 五、财报聚焦 → 六、大V与机构观点 → 七、明日关注清单。
 
@@ -56,7 +57,7 @@ python "$SKILL/scripts/collect_earnings.py" --date 2026-08-26 --out <workspace>/
 ### Step 4 校验（交付前强制）
 
 ```powershell
-python "$SKILL/scripts/validate_report_js.py" <workspace>/daily-review/A股每日监测报告_YYYYMMDD.html
+python "$SKILL/scripts/validate_report_js.py" ./daily-report/A股每日监测报告_YYYYMMDD.html
 ```
 
 必须输出 `node --check PASS` 才可交付；FAIL 则修到通过为止。
@@ -79,3 +80,17 @@ python "$SKILL/scripts/validate_report_js.py" <workspace>/daily-review/A股每�
 3. 东财 7x24 快讯 sortEnd 分页无效 → 早间新闻用 WebSearch 补。
 4. 节假日/非交易日：池和快讯为空属正常，报告改为「休市日」简报或提示用户。
 5. 财报季单日上千家披露：优先按行业脉络归纳 + TOP 榜展示，不逐家罗列。
+
+## 依赖说明
+
+- Python 3.10+（推荐 3.13）
+- Node.js 18+（用于 `node --check` 校验报告内联 JS）
+- 依赖库均通过标准库实现，无需额外安装（urllib, json, argparse, etc.）
+
+## 英文/法文报告
+
+技能附带英文模板 `assets/report_template_en.html` 和法文模板 `assets/report_template_fr.html`，用法同上，仅需将生成的报告文件命名为对应语言（例如 `A股每日监测报告_YYYYMMDD_en.html`）。
+
+## 注意
+
+本技能仅用于学习和演示目的，生成的报告不构成投资建议。使用前请确保在遵守当地法律法规的前提下进行操作。
