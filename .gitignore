@@ -1,0 +1,35 @@
+# 日志
+*_log.txt
+*_exit.txt
+*_check.*
+*_sum.*
+*_struct.*
+*_earn.*
+*_ystz.*
+*_extra.*
+*_vjs.*
+*_vjs_u8.*
+*_validate.*
+*_final_*
+*_compile.*
+push_log.txt
+push_to_github.ps1
+
+# 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 数据（如果不想版本化采集的原始 JSON）
+# data/
+# !data/.gitkeep
+
+# 个人工作区
+daily-report/
+*.html
