@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rapport quotidien de surveillance des actions A · {{DATE_FR}}</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+:root{--red:#dc2626;--green:#16a34a;--accent:#1e40af;--accent2:#1e3a5f;--bg:#f7f8fa;--card:#ffffff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.65;}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 48px;}
+header{text-align:center;padding:28px 0 10px;}
+header h1{font-size:26px;color:var(--accent2);letter-spacing:1px;}
+header .sub{color:var(--muted);font-size:14px;margin-top:6px;}
+h2.sec{font-size:19px;color:var(--accent2);margin:34px 0 14px;padding-left:12px;border-left:4px solid var(--accent);}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.05);}
+.tldr{background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);color:#fff;border-radius:12px;padding:22px 24px;margin-top:18px;}
+.tldr .verdict{font-size:20px;font-weight:700;margin-bottom:10px;}
+.tldr .kpis{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;}
+.tldr .kpi{background:rgba(255,255,255,.12);border-radius:8px;padding:8px 14px;font-size:13px;}
+.tldr .kpi b{display:block;font-size:17px;margin-top:2px;}
+.tldr .kpi b.up{color:#fca5a5;} .tldr .kpi b.down{color:#86efac;} .tldr .kpi b.flat{color:#e5e7eb;}
+.tldr .coo{background:rgba(255,255,255,.10);border-radius:8px;padding:12px 14px;font-size:13px;margin-top:8px;}
+.tldr .coo b{color:#fde68a;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:#eef2f7;color:#334155;text-align:left;padding:7px 9px;border-bottom:2px solid var(--line);white-space:nowrap;}
+td{padding:6px 9px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr:hover td{background:#f8fafc;}
+.up{color:var(--red);font-weight:600;} .down{color:var(--green);font-weight:600;} .flat{color:var(--muted);}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;margin-right:4px;white-space:nowrap;}
+.tag-bull{background:#fee2e2;color:#b91c1c;} .tag-neutral{background:#f1f5f9;color:#475569;} .tag-bear{background:#dcfce7;color:#15803d;}
+.news li{margin-bottom:10px;list-style:none;padding-left:14px;position:relative;}
+.news li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--accent);}
+.news b{color:var(--accent2);}
+.news .hint{color:var(--muted);font-size:12px;}
+.switcher{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:10px;}
+.sw-btn{border:none;background:#fff;color:var(--muted);padding:4px 16px;cursor:pointer;font-size:13px;}
+.sw-btn.active{background:var(--accent);color:#fff;}
+.chart-box{width:100%;height:380px;}
+.chart-box-sm{width:100%;height:300px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+.note{font-size:12px;color:var(--muted);margin-top:8px;}
+.kv{display:flex;flex-wrap:wrap;gap:8px;}
+.kv .chip{background:#f1f5f9;border-radius:6px;padding:4px 10px;font-size:13px;}
+.ladder{display:flex;flex-wrap:wrap;gap:10px;}
+.ladder .lb{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px;font-size:13px;min-width:150px;}
+.ladder .lb b{display:block;color:#c2410c;font-size:14px;}
+footer{margin-top:36px;padding:18px;background:#eef2f7;border-radius:10px;font-size:12px;color:#475569;}
+footer .risk{color:#b91c1c;font-weight:600;}
+</style>
+</head>
+<body>
+<!--
+Rapport quotidien de surveillance des actions A (version française)
+-->
+<div class="wrap">
+<header>
+<h1>Rapport quotidien de surveillance des actions A</h1>
+<div class="sub">{{DATE_FR}} · {{WEEKDAY_FR}} · Données de clôture | Marché | Nouvelles | Résultats | Opinions</div>
+</header>
+<!-- TLDR -->
+<div class="tldr">
+<div class="verdict">{{Synthèse en une phrase du marché}}</div>
+<div class="kpis">
+<div class="kpi">Indice SSE<b class="up">{{Valeur}}</b></div>
+<div class="kpi">Indice ChiNext<b class="up">{{Valeur}}</b></div>
+<div class="kpi">STAR 50<b class="{{up|down}}">{{Valeur}}</b></div>
+<div class="kpi">Turnover total<b class="flat">{{Montant}} billions · {{Hausse/Baisse}}N milliards</b></div>
+<div class="kpi">Limite haute / Limite basse<b class="up">{{N}} / {{N}}</b></div>
+<div class="kpi">Hausse / Baisse<b class="{{up|down}}">{{N}} à la hausse / {{N}} à la baisse</b></div>
+</div>
+<div class="kpis">
+<div class="kpi">Solde du financement<b class="flat">{{Valeur}} billions</b></div>
+<div class="kpi">{{Variable externe importante}}<b class="{{up|down}}">{{Valeur}}</b></div>
+<div class="kpi">Résultats publiés<b class="up">{{N}} entreprises</b></div>
+<div class="kpi">Secteur avec flux net le plus élevé<b class="up">{{Secteur}} +{{N}}Mds</b></div>
+</div>
+<div class="coo">
+<b>Condition → Action → Stop‑loss</b><br>
+① <b>Condition</b>: {{Condition de montée du marché}};<br>
+② <b>Action</b>: {{Idée de trading}};<br>
+③ <b>Stop‑loss / Défense</b>: {{Niveau clé / nombre de limites hautes}}.
+</div>
+</div>
+<h2 class="sec">1. Aperçu du marché</h2>
+<div class="card">
+<table>
+<thead><tr><th>Indice</th><th class="num">Clôture</th><th class="num">Variation</th><th class="num">Volume (milliards)</th><th>Note</th></tr></thead>
+<tbody><!-- Remplir avec les données --></tbody>
+</table>
+<p class="note">{{Résumé du volume / de la liquidité / de la largeur du marché}}</p>
+</div>
+<!-- Autres sections (2‑7) traduites de la même manière que le modèle chinois -->
+<footer>
+<p class="risk">Avertissement : Cette analyse est basée sur des données publiques et ne constitue pas un conseil en investissement. Les marchés comportent des risques ; investissez prudemment.</p>
+<p style="margin-top:6px">Note sur les sources des données : les données de marché et de financement sont des instantanés à la date {{DATE_FR}} ; les données de résultats reflètent les publications publiées le même jour.</p>
+<p style="margin-top:6px">Rapport quotidien de surveillance des actions A · {{DATE_FR}} · Généré automatiquement</p>
+</footer>
+</div>
+<script>
+/* Framework JS unchanged */
+function toggleVT(sec, mode, btn){
+  var btns = btn.parentNode.querySelectorAll('.sw-btn');
+  btns.forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  var cEl=document.getElementById(sec+'_chart');
+  var tEl=document.getElementById(sec+'_table');
+  if(mode==='chart'){cEl.style.display='block';tEl.style.display='none';
+    var boxes=cEl.querySelectorAll('.chart-box,.chart-box-sm');
+    boxes.forEach(b=>{var cid=b.id; if(window.chartsMap && window.chartsMap[cid]) window.chartsMap[cid].resize();});
+  }else{cEl.style.display='none';tEl.style.display='block';}
+}
+window.chartsMap={};
+window.addEventListener('resize',()=>{for(var k in window.chartsMap){window.chartsMap[k].resize();}});
+</script>
+</body>
+</html>
